@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎁 сайт вероники</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><text y="26" font-size="26">❤️</text></svg>') 16 16, auto;
+    min-height: 100vh;
+    background: radial-gradient(circle at center, #1a0b1e 0%, #0b0b1a 100%);
+    overflow: hidden;
+    font-family: 'Courier New', monospace;
+    color: #fff;
+  }
+
+  #matrix {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    opacity: 0.25;
+    pointer-events: none;
+  }
+
+  .content {
+    position: relative;
+    z-index: 2;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 25px;
+    padding: 20px;
+    text-align: center;
+  }
+
+  .clock {
+    font-size: clamp(2rem, 7vw, 4rem);
+    color: #0ff;
+    text-shadow: 0 0 20px #0ff, 0 0 40px #0ff;
+    letter-spacing: 4px;
+  }
+
+  .date {
+    font-size: 1rem;
+    color: #7fffd4;
+    text-shadow: 0 0 10px #7fffd4;
+    letter-spacing: 3px;
+    opacity: 0.8;
+  }
+
+  .btn {
+    padding: 18px 45px;
+    font-size: 1.2rem;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #fff;
+    background: #ff2a6d;
+    border: 4px solid #ffb3d9;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 0 20px #ff2a6d, 0 0 40px #ff2a6d66;
+    position: relative;
+    z-index: 3;
+  }
+  .btn:hover {
+    background: #ff4d8f;
+    transform: scale(1.05);
+    box-shadow: 0 0 30px #ff2a6d, 0 0 60px #ff2a6daa;
+  }
+  .btn:active { transform: scale(0.95); }
+
+  .runaway-btn {
+    position: fixed;
+    padding: 15px 30px;
+    font-size: 1rem;
+    font-family: 'Courier New', monospace;
+    background: #06d6a0;
+    color: #0b0b1a;
+    border: 3px solid #fff;
+    cursor: pointer;
+    border-radius: 10px;
+    transition: all 0.15s;
+    z-index: 4;
+    font-weight: bold;
+  }
+
+  .hint {
+    font-size: 0.85rem;
+    color: #ffb3d9;
+    letter-spacing: 2px;
+    opacity: 0.7;
+    margin-top: 10px;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+
+  .heart-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: radial-gradient(circle at center, #2a0b1e 0%, #0b0b1a 100%);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.6s, visibility 0.6s;
+    z-index: 10;
+  }
+  .heart-overlay.active { opacity: 1; visibility: visible; }
+
+  .pixel-heart-full {
+    position: relative;
+    width: 85vmin;
+    height: 85vmin;
+    display: grid;
+    grid-template-columns: repeat(15, 1fr);
+    grid-template-rows: repeat(13, 1fr);
+    filter: drop-shadow(0 0 20px #ff2a6d) drop-shadow(0 0 60px #ff2a6d88);
+    animation: heartBeat 1.5s ease-in-out infinite, heartAppear 0.8s ease-out;
+  }
+  @keyframes heartAppear {
+    0%   { transform: scale(0); opacity: 0; }
+    60%  { transform: scale(1.1); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes heartBeat {
+    0%,100% { transform: scale(1); }
+    15% { transform: scale(1.08); }
+    30% { transform: scale(1); }
+    45% { transform: scale(1.05); }
+    60% { transform: scale(1); }
+  }
+
+  .pixel {
+    background: #ff2a6d;
+    box-shadow: inset 0 0 4px #ff9ec7, 0 0 6px #ff2a6d;
+    opacity: 0;
+    animation: pixelFadeIn 0.3s forwards, pixelGlow 2s ease-in-out infinite;
+  }
+  .pixel.light {
+    background: #ff9ec7;
+    box-shadow: inset 0 0 4px #fff, 0 0 8px #ffb3d9;
+  }
+  .pixel.empty { background: transparent; box-shadow: none; animation: none; }
+
+  @keyframes pixelFadeIn { to { opacity: 1; } }
+  @keyframes pixelGlow { 0%,100%{filter:brightness(1)} 50%{filter:brightness(1.3)} }
+
+  .heart-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
+    text-shadow: 0 0 10px #ff2a6d, 0 0 30px #ff2a6d, 2px 2px 0 #0b0b1a;
+    animation: textAppear 1s ease-out 0.5s backwards;
+  }
+  @keyframes textAppear {
+    from { opacity:0; transform: translateY(20px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+  .heart-text h1 {
+    font-size: clamp(1.5rem, 6vmin, 4rem);
+    letter-spacing: 8px;
+    animation: pulse 1.5s infinite;
+  }
+  .heart-text p {
+    font-size: clamp(0.9rem, 3vmin, 1.8rem);
+    color: #ffb3d9;
+    letter-spacing: 4px;
+    margin-top: 10px;
+  }
+
+  .close-btn {
+    position: fixed;
+    top: 20px; right: 20px;
+    width: 50px; height: 50px;
+    background: #ff2a6d;
+    border: 3px solid #ffb3d9;
+    color: #fff;
+    font-size: 1.5rem;
+    font-weight: bold;
+    cursor: pointer;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.4s;
+    box-shadow: 0 0 20px #ff2a6d;
+    z-index: 20;
+  }
+  .close-btn.active { opacity: 1; visibility: visible; }
+  .close-btn:hover { background: #ff4d8f; transform: rotate(90deg) scale(1.1); }
+
+  .confetti {
+    position: fixed;
+    width: 10px; height: 10px;
+    pointer-events: none;
+    z-index: 100;
+    animation: fall 1.5s linear forwards;
+  }
+  @keyframes fall {
+    0%   { transform: translate(0,0) rotate(0); opacity: 1; }
+    100% { transform: translate(var(--x), 100vh) rotate(720deg); opacity: 0; }
+  }
+
+  .fish {
+    position: fixed;
+    font-size: 2rem;
+    pointer-events: none;
+    z-index: 1;
+    animation: swim linear infinite;
+  }
+  @keyframes swim {
+    from { transform: translateX(-10vw) scaleX(var(--dir)); }
+    to   { transform: translateX(110vw) scaleX(var(--dir)); }
+  }
+
+  .floating-heart {
+    position: fixed;
+    pointer-events: none;
+    z-index: 1;
+    animation: floatUp linear infinite;
+  }
+  @keyframes floatUp {
+    0%   { transform: translateY(100vh) rotate(0); opacity: 0; }
+    10%  { opacity: 0.6; }
+    90%  { opacity: 0.6; }
+    100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
+  }
+
+  #keyIndicator {
+    position: fixed;
+    top: 20px; left: 20px;
+    padding: 15px 25px;
+    background: rgba(0,255,0,0.1);
+    border: 2px solid #0f0;
+    color: #0f0;
+    font-size: 1.5rem;
+    font-family: monospace;
+    font-weight: bold;
+    text-shadow: 0 0 10px #0f0;
+    box-shadow: 0 0 20px #0f0666;
+    border-radius: 8px;
+    z-index: 5;
+    min-width: 60px;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  #keyIndicator.show { opacity: 1; }
+
+  @media (max-width: 600px) {
+    .hint { font-size: 0.7rem; padding: 0 20px; }
+    .runaway-btn { font-size: 0.85rem; padding: 12px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="matrix"></canvas>
+<div id="keyIndicator">?</div>
+
+<div class="content">
+  <div class="clock" id="clock">00:00:00</div>
+  <div class="date" id="date">—</div>
+  <button class="btn" id="startBtn">Нажми меня ❤</button>
+  <div class="hint">🎹 Нажимай клавиши — они играют музыку 🎵<br>💥 Кликай в любом месте — летит конфетти 🎊</div>
+</div>
+
+<button class="runaway-btn" id="runawayBtn">Поймай меня 😜</button>
+
+<div class="heart-overlay" id="overlay">
+  <div class="pixel-heart-full" id="pixelHeart"></div>
+  <div class="heart-text">
+    <h1>I ❤ YOU</h1>
+    <p>катя какашка</p>
+  </div>
+</div>
+
+<button class="close-btn" id="closeBtn">✕</button>
+
+<script>
+/* ========== 1. ПИКСЕЛЬНОЕ СЕРДЦЕ ========== */
+const heartMap = [
+  [0,0,1,1,0,0,0,0,0,0,0,1,1,0,0],
+  [0,1,1,1,1,0,0,0,0,0,1,1,1,1,0],
+  [1,1,1,1,1,1,0,0,0,1,1,1,1,1,1],
+  [1,1,2,1,1,1,1,0,1,1,1,1,1,1,1],
+  [1,1,2,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [0,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+  [0,0,1,1,1,1,1,1,1,1,1,1,1,0,0],
+  [0,0,0,1,1,1,1,1,1,1,1,1,0,0,0],
+  [0,0,0,0,1,1,1,1,1,1,1,0,0,0,0],
+  [0,0,0,0,0,1,1,1,1,1,0,0,0,0,0],
+  [0,0,0,0,0,0,1,1,1,0,0,0,0,0,0]
+];
+
+const heartContainer = document.getElementById('pixelHeart');
+const overlay = document.getElementById('overlay');
+const startBtn = document.getElementById('startBtn');
+const closeBtn = document.getElementById('closeBtn');
+
+function buildHeart() {
+  heartContainer.innerHTML = '';
+  const total = heartMap.length * heartMap[0].length;
+  let i = 0;
+  for (let r = 0; r < heartMap.length; r++) {
+    for (let c = 0; c < heartMap[r].length; c++) {
+      const v = heartMap[r][c];
+      const p = document.createElement('div');
+      if (v === 0) p.className = 'pixel empty';
+      else if (v === 2) p.className = 'pixel light';
+      else p.className = 'pixel';
+      const delay = (i / total) * 0.6;
+      p.style.animationDelay = delay + 's, ' + (delay + 0.3) + 's';
+      heartContainer.appendChild(p);
+      i++;
+    }
+  }
+}
+
+function openHeart() {
+  buildHeart();
+  overlay.classList.add('active');
+  startBtn.style.display = 'none';
+  closeBtn.classList.add('active');
+  spawnFloatingHearts(15);
+}
+
+function closeHeart() {
+  overlay.classList.remove('active');
+  startBtn.style.display = '';
+  closeBtn.classList.remove('active');
+  const list = document.querySelectorAll('.floating-heart');
+  for (let i = 0; i < list.length; i++) list[i].remove();
+}
+
+startBtn.addEventListener('click', openHeart);
+closeBtn.addEventListener('click', closeHeart);
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && overlay.classList.contains('active')) closeHeart();
+});
+
+/* ========== 2. КОНФЕТТИ ========== */
+const colors = ['#ff2a6d','#ffd166','#06d6a0','#118ab2','#ef476f','#8338ec','#fff'];
+document.body.addEventListener('click', function(e) {
+  if (e.target.tagName === 'BUTTON') return;
+  for (let i = 0; i < 25; i++) {
+    const c = document.createElement('div');
+    c.className = 'confetti';
+    c.style.background = colors[Math.floor(Math.random() * colors.length)];
+    c.style.left = e.clientX + 'px';
+    c.style.top = e.clientY + 'px';
+    c.style.setProperty('--x', (Math.random() * 400 - 200) + 'px');
+    c.style.animationDelay = (Math.random() * 0.2) + 's';
+    c.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+    document.body.appendChild(c);
+    setTimeout(function() { c.remove(); }, 1800);
+  }
+});
+
+/* ========== 3. КНОПКА-БЕГЛЕЦ ========== */
+const runawayBtn = document.getElementById('runawayBtn');
+function moveRunaway() {
+  const maxX = window.innerWidth - runawayBtn.offsetWidth - 20;
+  const maxY = window.innerHeight - runawayBtn.offsetHeight - 20;
+  runawayBtn.style.left = Math.max(20, Math.random() * maxX) + 'px';
+  runawayBtn.style.top  = Math.max(20, Math.random() * maxY) + 'px';
+  runawayBtn.style.right = 'auto';
+  runawayBtn.style.bottom = 'auto';
+}
+runawayBtn.addEventListener('mouseenter', moveRunaway);
+runawayBtn.addEventListener('touchstart', moveRunaway);
+runawayBtn.addEventListener('click', function() {
+  alert('Поймал! 🎉 Молодец!');
+});
+runawayBtn.style.left = (window.innerWidth - 200) + 'px';
+runawayBtn.style.top = '50%';
+
+/* ========== 4. МУЗЫКАЛЬНЫЕ КЛАВИШИ ========== */
+let audioCtx = null;
+const keyIndicator = document.getElementById('keyIndicator');
+
+function initAudio() {
+  if (audioCtx) return;
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new AC();
+  } catch (err) {
+    console.log('Аудио не поддерживается', err);
+  }
+}
+
+function playTone() {
+  if (!audioCtx) return;
+  try {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = 200 + Math.random() * 800;
+    osc.type = 'square';
+    gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.3);
+  } catch (err) {
+    console.log('Ошибка звука:', err);
+  }
+}
+
+document.addEventListener('click', initAudio, { once: true });
+document.addEventListener('touchstart', initAudio, { once: true });
+
+document.addEventListener('keydown', function(e) {
+  if (!audioCtx) initAudio();
+  keyIndicator.textContent = e.key === ' ' ? '␣' : e.key.toUpperCase();
+  keyIndicator.classList.add('show');
+  playTone();
+  clearTimeout(window._keyTimer);
+  window._keyTimer = setTimeout(function() {
+    keyIndicator.classList.remove('show');
+  }, 1000);
+});
+
+/* ========== 5. ЧАСЫ И ДАТА ========== */
+function tick() {
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toLocaleTimeString('ru-RU');
+  document.getElementById('date').textContent = now.toLocaleDateString('ru-RU', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+  });
+}
+tick();
+setInterval(tick, 1000);
+
+/* ========== 6. МАТРИЦА ========== */
+const canvas = document.getElementById('matrix');
+const ctx = canvas.getContext('2d');
+
+function resizeMatrix() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resizeMatrix();
+window.addEventListener('resize', resizeMatrix);
+
+const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789ABCDEF';
+const fontSize = 14;
+let drops = [];
+
+function initDrops() {
+  drops = [];
+  const cols = Math.floor(canvas.width / fontSize);
+  for (let i = 0; i < cols; i++) drops.push(1);
+}
+initDrops();
+
+function drawMatrix() {
+  ctx.fillStyle = 'rgba(11,11,26,0.08)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#0f0';
+  ctx.font = fontSize + 'px monospace';
+  for (let i = 0; i < drops.length; i++) {
+    const text = chars[Math.floor(Math.random() * chars.length)];
+    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+    if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+    drops[i]++;
+  }
+}
+setInterval(drawMatrix, 60);
+
+/* ========== 7. РЫБКИ ========== */
+const fishList = ['🐟','🐠','🐡','🦈','🐙','🦑','🐢','🦐'];
+function spawnFish(count) {
+  for (let i = 0; i < count; i++) {
+    const f = document.createElement('div');
+    f.className = 'fish';
+    f.textContent = fishList[Math.floor(Math.random() * fishList.length)];
+    f.style.top = Math.random() * 90 + 'vh';
+    f.style.animationDuration = (15 + Math.random() * 15) + 's';
+    f.style.animationDelay = (-Math.random() * 20) + 's';
+    f.style.fontSize = (1.2 + Math.random() * 1.8) + 'rem';
+    f.style.setProperty('--dir', Math.random() > 0.5 ? 1 : -1);
+    f.style.opacity = 0.5 + Math.random() * 0.5;
+    document.body.appendChild(f);
+  }
+}
+spawnFish(12);
+
+/* ========== 8. ЛЕТЯЩИЕ СЕРДЕЧКИ ========== */
+function spawnFloatingHearts(count) {
+  for (let i = 0; i < count; i++) {
+    const h = document.createElement('div');
+    h.className = 'floating-heart';
+    h.textContent = '❤';
+    h.style.color = '#ff2a6d';
+    h.style.left = Math.random() * 100 + 'vw';
+    h.style.fontSize = (12 + Math.random() * 20) + 'px';
+    h.style.textShadow = '0 0 10px #ff2a6d';
+    h.style.animationDuration = (5 + Math.random() * 5) + 's';
+    h.style.animationDelay = (Math.random() * 3) + 's';
+    overlay.appendChild(h);
+    setTimeout(function() { h.remove(); }, 13000);
+  }
+}
+
+console.log('✅ Всё загружено! Кликни по странице, потом нажимай клавиши.');
+</script>
+</body>
+</html>
